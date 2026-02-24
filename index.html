@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payslip</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+    <style>
+        /* Global Box Sizing - Essential for preventing layout clipping */
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+
+        /* Button Styling */
+        .btn-download {
+            margin-bottom: 20px;
+            padding: 15px 30px;
+            background-color: #28a745; /* Green for batch action */
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .btn-download:hover {
+            background-color: #218838;
+        }
+        .status-msg {
+            margin-bottom: 10px;
+            font-weight: bold;
+            color: #333;
+            min-height: 20px;
+        }
+
+        /* Payslip Container 
+           Fixed Width: ~750px fits comfortably within A4 (794px) with margins 
+        */
+        .payslip-container {
+            background-color: white;
+            width: 750px; 
+            padding: 40px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.1);
+            color: #000;
+            margin-bottom: 50px; /* Space at bottom of screen */
+        }
+
+        /* Header */
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            font-size: 20px;
+            margin: 0 0 5px 0;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        .header h2 {
+            font-size: 18px;
+            margin: 0 0 5px 0;
+            font-weight: bold;
+        }
+        .header p {
+            font-size: 14px;
+            margin: 0;
+            color: #333;
+        }
+
+        /* Employee Info Grid */
+        .info-grid {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            font-size: 14px;
+            gap: 20px; /* Space between columns */
+        }
+        .info-column {
+            flex: 1; /* Both columns take equal space */
+        }
+        
+        .info-row {
+            display: flex;
+            margin-bottom: 8px;
+        }
+        .label {
+            font-weight: normal;
+            width: 40%; /* Fixed width for labels */
+            flex-shrink: 0;
+        }
+        .value {
+            font-weight: bold;
+            width: 60%;
+            white-space: nowrap; /* PREVENTS WRAPPING (Fixes Email issue) */
+            overflow: visible;
+        }
+
+        /* Table Styling */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+        th, td {
+            border: 1px solid #000;
+            padding: 8px;
+        }
+        th {
+            background-color: #e0e0e0; 
+            font-weight: bold;
+            text-align: center;
+            text-transform: uppercase;
+            font-size: 12px;
+        }
+        
+        /* Column widths */
+        .col-desc { width: 35%; }
+        .col-amount { width: 15%; text-align: right; }
+
+        /* Specific borders to mimic the visual style */
+        .no-border-bottom td { border-bottom: none; }
+        .no-border-top td { border-top: none; }
+
+        /* Footer / Signatures */
+        .amount-words {
+            text-align: center;
+            margin: 30px 0 60px 0;
+            font-size: 14px;
+        }
+        .amount-number {
+            font-weight: bold;
+            margin-bottom: 5px;
+            display: block;
+            font-size: 16px;
+        }
+
+        .signatures {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 60px;
+            padding: 0 20px;
+        }
+        .sign-box {
+            text-align: center;
+            width: 200px;
+        }
+        /* Visual lines for signature */
+        .sign-line-visual {
+            width: 100%;
+            border-bottom: 1px solid #000;
+            margin-bottom: 5px;
+        }
+
+        .footer-note {
+            text-align: center;
+            font-size: 11px;
+            margin-top: 40px;
+            color: #555;
+        }
+
+        /* Utilities */
+        .text-right { text-align: right; }
+        .bold { font-weight: bold; }
+
+    </style>
+</head>
+<body>
+
+    <div class="status-msg" id="status-display">Ready to generate.</div>
+    <button class="btn-download" id="generate-btn" onclick="generateBatchPDFs()">Download All Months (Apr 2025 - Mar 2026)</button>
+
+    <div class="payslip-container" id="payslip-content">
+        
+        <div class="header">
+            <h1>Payslip</h1>
+            <h2>V. M. SOJITRA</h2>
+            <p>Akshar Residency, Giriraj Main Road, B/h Bus Stand, Junagadh - 362 001</p>
+        </div>
+
+        <div class="info-grid">
+            <div class="info-column">
+                <div class="info-row">
+                    <span class="label">Working Days</span>
+                    <span class="value">: 26</span>
+                </div>
+                <div class="info-row">
+                    <span class="label">Month</span>
+                    <span class="value" id="month-placeholder">: April 2025</span>
+                </div>
+                <div class="info-row">
+                    <span class="label">Location</span>
+                    <span class="value">: Matar / Naika</span>
+                </div>
+            </div>
+
+            <div class="info-column">
+                <div class="info-row">
+                    <span class="label">Employee Name</span>
+                    <span class="value">: Patel Urvish</span>
+                </div>
+                <div class="info-row">
+                    <span class="label">Employee ID</span>
+                    <span class="value">: urvishpatel23121996@gmail.com</span>
+                </div>
+                <div class="info-row">
+                    <span class="label">Designation</span>
+                    <span class="value">: Engineer/supervisor</span>
+                </div>
+            </div>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th class="col-desc">Earnings</th>
+                    <th class="col-amount">Amount</th>
+                    <th class="col-desc">Deductions</th>
+                    <th class="col-amount">Amount</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr class="no-border-bottom">
+                    <td>Basic Pay</td>
+                    <td class="text-right">27000</td>
+                    <td></td>
+                    <td class="text-right"></td>
+                </tr>
+                <tr class="no-border-top no-border-bottom">
+                    <td>Petrol Allowance</td>
+                    <td class="text-right">2000</td>
+                    <td></td>
+                    <td class="text-right"></td>
+                </tr>
+                <tr class="no-border-top no-border-bottom" style="height: 40px;">
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+                <tr>
+                    <td class="text-right bold">Total Earnings</td>
+                    <td class="text-right bold">29000</td>
+                    <td class="text-right bold">Total Deductions</td>
+                    <td class="text-right bold">0</td>
+                </tr>
+                <tr>
+                    <td style="border: none;"></td> 
+                    <td style="border: none;"></td> 
+                    <td class="text-right bold" style="border: 1px solid #000; background-color: #f0f0f0;">Net Pay</td>
+                    <td class="text-right bold" style="border: 1px solid #000; background-color: #f0f0f0;">29000</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="amount-words">
+            <span class="amount-number">29000</span>
+            <span>Twenty Nine Thousand</span>
+        </div>
+
+        <div class="signatures">
+            <div class="sign-box">
+                <div class="sign-line-visual"></div>
+                <p class="bold">Employer Signature</p>
+            </div>
+            <div class="sign-box">
+                <div class="sign-line-visual"></div>
+                <p class="bold">Employee Signature</p>
+            </div>
+        </div>
+
+        <div class="footer-note">
+            This is system generated payslip
+        </div>
+
+    </div>
+
+    <script>
+        // List of all months needed
+        const months = [
+            "April 2025", "May 2025", "June 2025", 
+            "July 2025", "August 2025", "September 2025",
+            "October 2025", "November 2025", "December 2025",
+            "January 2026", "February 2026", "March 2026"
+        ];
+
+        async function generateBatchPDFs() {
+            const element = document.getElementById('payslip-content');
+            const monthLabel = document.getElementById('month-placeholder');
+            const statusDiv = document.getElementById('status-display');
+            const btn = document.getElementById('generate-btn');
+
+            // Disable button during process
+            btn.disabled = true;
+            btn.style.backgroundColor = "#ccc";
+            btn.innerText = "Generating...";
+
+            // Configure PDF options
+            const opt = {
+                margin:       [0.2, 0.2, 0.2, 0.2], 
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2, useCORS: true }, 
+                jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
+            };
+
+            // Loop through each month
+            for (let i = 0; i < months.length; i++) {
+                const currentMonth = months[i];
+                
+                // 1. Update the HTML text
+                monthLabel.innerText = ": " + currentMonth;
+                statusDiv.innerText = `Generating ${i + 1}/${months.length}: ${currentMonth}...`;
+
+                // 2. Update filename
+                opt.filename = `Payslip_${currentMonth.replace(' ', '_')}.pdf`;
+
+                // 3. Wait a moment for DOM to update visually
+                await new Promise(resolve => setTimeout(resolve, 300));
+
+                // 4. Generate and Save PDF
+                await html2pdf().set(opt).from(element).save();
+                
+                // 5. Short pause
+                await new Promise(resolve => setTimeout(resolve, 800));
+            }
+
+            statusDiv.innerText = "All files downloaded!";
+            btn.disabled = false;
+            btn.style.backgroundColor = "#28a745";
+            btn.innerText = "Download All Months (Apr 2025 - Mar 2026)";
+            
+            // Reset to first month
+            monthLabel.innerText = ": " + months[0];
+        }
+    </script>
+</body>
+</html>
